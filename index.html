@@ -3,110 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerador BIP39 Real - 12 Palavras</title>
+<title>Gerador BIP39 - Copia e Cola</title>
 <style>
   body { background: #0f0f0f; color: white; font-family: sans-serif; padding: 20px; max-width: 650px; margin: auto; }
-  h1 { color: #f7931a; font-size: 22px; }
-  button { background: #f7931a; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; width: 100%; cursor: pointer; }
+  h1 { color: #f7931a; font-size: 22px; text-align: center; }
+  button { border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; width: 100%; cursor: pointer; }
+  .btn-gerar { background: #f7931a; color: black; }
+  .btn-copiar { background: #00c853; color: black; margin-top: 10px; }
   .caixa { background: #1a1a1a; border: 1px solid #333; padding: 16px; border-radius: 12px; margin-top: 15px; }
   .palavra { display: inline-block; background: #2a2a2a; border: 1px solid #444; color: white; padding: 8px 12px; margin: 4px; border-radius: 20px; font-weight: bold; }
   .palavra12 { background: #00c853; color: black; border-color: #00c853; }
+  textarea { width: 100%; height: 70px; background: #000; color: #00ff00; border: 1px solid #333; border-radius: 10px; padding: 12px; font-size: 16px; font-family: monospace; box-sizing: border-box; resize: none; }
   .aviso { background: #ff000022; border: 1px solid red; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
-  code { color: #f7931a; }
-  .mono { font-family: monospace; font-size: 12px; word-break: break-all; color: #aaa; }
+  #msg { text-align: center; color: #00ff00; font-weight: bold; margin-top: 8px; min-height: 20px; }
 </style>
 </head>
 <body>
 
-<h1>🟠 Gerador BIP39 Real - 12 Palavras</h1>
-<p>Este site cria uma frase nova usando o padrão oficial do Bitcoin. Roda 100% no seu celular, nada sai daqui.</p>
+<h1>🟠 Gerador 12 Palavras - BIP39 Real</h1>
 
 <div class="aviso">
-⚠️ <b>REGRA DE OURO:</b> Nunca digite sua frase real em nenhum site. Este gerador é para <b>estudo e teste</b>. Se for usar de verdade, use offline e anote no papel.
+⚠️ <b>Só para teste e estudo.</b> Nunca use frase gerada em site online para guardar dinheiro de verdade. Para dinheiro real, use carteira oficial offline.
 </div>
 
 <br>
-<button onclick="gerar()">GERAR NOVA FRASE REAL</button>
+<button class="btn-gerar" onclick="gerar()">GERAR 12 PALAVRAS</button>
 
-<div class="caixa" id="resultado">Clique para gerar...</div>
+<div class="caixa" id="resultado" style="text-align:center; color:#888;">Clique para gerar...</div>
 
 <div class="caixa">
-<h3>Como a 12ª palavra nasce de verdade:</h3>
-<p>1. Sorteia 128 bits aleatórios = 16 bytes</p>
-<p>2. Faz <code>SHA256</code> desses 128 bits</p>
-<p>3. Pega os primeiros 4 bits do SHA256 = checksum</p>
-<p>4. Junta 128 + 4 = 132 bits</p>
-<p>5. Divide em 12 pedaços de 11 bits. Cada pedaço vira uma palavra da lista de 2048.</p>
-<p>A 12ª palavra carrega o checksum. Por isso ela não é aleatória.</p>
-<p class="mono" id="detalhes"></p>
+  <b>📋 Copia e cola - pronta:</b><br><br>
+  <textarea id="copia" readonly placeholder="Aqui vai aparecer sua frase pronta para copiar..."></textarea>
+  <button class="btn-copiar" onclick="copiar()">📋 COPIAR AS 12 PALAVRAS</button>
+  <div id="msg"></div>
 </div>
 
 <script>
 let WORDLIST = [];
+let fraseAtual = "";
 
 async function carregarLista() {
   if (WORDLIST.length) return WORDLIST;
-  // Lista oficial BIP39 em inglês
   const url = "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt";
   const txt = await (await fetch(url)).text();
   WORDLIST = txt.trim().split("\n");
   return WORDLIST;
 }
-
 function bytesToBinary(bytes) {
   return Array.from(bytes).map(b => b.toString(2).padStart(8, '0')).join('');
 }
-
 async function sha256(bytes) {
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   return new Uint8Array(hash);
 }
-
 async function gerar() {
-  const btn = document.querySelector('button');
-  btn.innerText = "CARREGANDO LISTA OFICIAL...";
+  const btn = document.querySelector('.btn-gerar');
+  btn.innerText = "GERANDO...";
+  document.getElementById('msg').innerText = "";
   try {
     const lista = await carregarLista();
-
-    // 1. 128 bits aleatórios
     const entropy = new Uint8Array(16);
     crypto.getRandomValues(entropy);
-
-    // 2. SHA256
     const hash = await sha256(entropy);
     const hashBits = bytesToBinary(hash);
-
-    // 3. Checksum = primeiros 4 bits do hash
     const checksum = hashBits.slice(0, 4);
-
-    // 4. Junta
-    const bits = bytesToBinary(entropy) + checksum; // 132 bits
-
-    // 5. Divide em 12 x 11 bits
+    const bits = bytesToBinary(entropy) + checksum;
     let frase = [];
     for (let i = 0; i < 12; i++) {
       const chunk = bits.slice(i * 11, (i + 1) * 11);
-      const index = parseInt(chunk, 2);
-      frase.push(lista[index]);
+      frase.push(lista[parseInt(chunk, 2)]);
     }
-
+    fraseAtual = frase.join(' ');
+    // Mostra bonitinho
     let html = frase.map((p, i) => {
-      if (i === 11) return `<span class="palavra palavra12">${i+1}. ${p} ← 12ª CHECKSUM</span>`;
+      if (i === 11) return `<span class="palavra palavra12">${i+1}. ${p}</span>`;
       return `<span class="palavra">${i+1}. ${p}</span>`;
     }).join('');
-
     document.getElementById('resultado').innerHTML = html;
-    document.getElementById('detalhes').innerText =
-      "Entropia (128 bits): " + Array.from(entropy).map(b=>b.toString(16).padStart(2,'0')).join('') +
-      "\nSHA256: " + Array.from(hash).map(b=>b.toString(16).padStart(2,'0')).join('') +
-      "\nChecksum (4 bits): " + checksum +
-      "\nIsso é BIP39 real, igual Trust Wallet, MetaMask, Ledger fazem.";
-
-    btn.innerText = "GERAR OUTRA FRASE REAL";
+    // Mostra no formato copia e cola
+    document.getElementById('copia').value = fraseAtual;
+    btn.innerText = "GERAR OUTRA";
   } catch(e) {
-    btn.innerText = "GERAR NOVA FRASE REAL";
-    document.getElementById('resultado').innerHTML = "Erro ao carregar lista. Verifique sua internet e tente de novo. " + e;
+    btn.innerText = "GERAR 12 PALAVRAS";
+    document.getElementById('resultado').innerHTML = "Erro de internet. Tente de novo.";
   }
+}
+function copiar() {
+  const campo = document.getElementById('copia');
+  if (!fraseAtual) {
+    document.getElementById('msg').innerText = "Gere primeiro!";
+    return;
+  }
+  campo.select();
+  campo.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(fraseAtual).then(() => {
+    document.getElementById('msg').innerText = "✅ COPIADO! Agora é só colar onde quiser.";
+  }).catch(() => {
+    document.execCommand('copy');
+    document.getElementById('msg').innerText = "✅ COPIADO!";
+  });
 }
 </script>
 </body>
