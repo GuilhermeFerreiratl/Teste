@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador BIP39 Real - 12 Palavras</title>
+<style>
+  body { background: #0f0f0f; color: white; font-family: sans-serif; padding: 20px; max-width: 650px; margin: auto; }
+  h1 { color: #f7931a; font-size: 22px; }
+  button { background: #f7931a; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 16px; width: 100%; cursor: pointer; }
+  .caixa { background: #1a1a1a; border: 1px solid #333; padding: 16px; border-radius: 12px; margin-top: 15px; }
+  .palavra { display: inline-block; background: #2a2a2a; border: 1px solid #444; color: white; padding: 8px 12px; margin: 4px; border-radius: 20px; font-weight: bold; }
+  .palavra12 { background: #00c853; color: black; border-color: #00c853; }
+  .aviso { background: #ff000022; border: 1px solid red; padding: 12px; border-radius: 10px; font-size: 13px; line-height: 1.5; }
+  code { color: #f7931a; }
+  .mono { font-family: monospace; font-size: 12px; word-break: break-all; color: #aaa; }
+</style>
+</head>
+<body>
+
+<h1>🟠 Gerador BIP39 Real - 12 Palavras</h1>
+<p>Este site cria uma frase nova usando o padrão oficial do Bitcoin. Roda 100% no seu celular, nada sai daqui.</p>
+
+<div class="aviso">
+⚠️ <b>REGRA DE OURO:</b> Nunca digite sua frase real em nenhum site. Este gerador é para <b>estudo e teste</b>. Se for usar de verdade, use offline e anote no papel.
+</div>
+
+<br>
+<button onclick="gerar()">GERAR NOVA FRASE REAL</button>
+
+<div class="caixa" id="resultado">Clique para gerar...</div>
+
+<div class="caixa">
+<h3>Como a 12ª palavra nasce de verdade:</h3>
+<p>1. Sorteia 128 bits aleatórios = 16 bytes</p>
+<p>2. Faz <code>SHA256</code> desses 128 bits</p>
+<p>3. Pega os primeiros 4 bits do SHA256 = checksum</p>
+<p>4. Junta 128 + 4 = 132 bits</p>
+<p>5. Divide em 12 pedaços de 11 bits. Cada pedaço vira uma palavra da lista de 2048.</p>
+<p>A 12ª palavra carrega o checksum. Por isso ela não é aleatória.</p>
+<p class="mono" id="detalhes"></p>
+</div>
+
+<script>
+let WORDLIST = [];
+
+async function carregarLista() {
+  if (WORDLIST.length) return WORDLIST;
+  // Lista oficial BIP39 em inglês
+  const url = "https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt";
+  const txt = await (await fetch(url)).text();
+  WORDLIST = txt.trim().split("\n");
+  return WORDLIST;
+}
+
+function bytesToBinary(bytes) {
+  return Array.from(bytes).map(b => b.toString(2).padStart(8, '0')).join('');
+}
+
+async function sha256(bytes) {
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return new Uint8Array(hash);
+}
+
+async function gerar() {
+  const btn = document.querySelector('button');
+  btn.innerText = "CARREGANDO LISTA OFICIAL...";
+  try {
+    const lista = await carregarLista();
+
+    // 1. 128 bits aleatórios
+    const entropy = new Uint8Array(16);
+    crypto.getRandomValues(entropy);
+
+    // 2. SHA256
+    const hash = await sha256(entropy);
+    const hashBits = bytesToBinary(hash);
+
+    // 3. Checksum = primeiros 4 bits do hash
+    const checksum = hashBits.slice(0, 4);
+
+    // 4. Junta
+    const bits = bytesToBinary(entropy) + checksum; // 132 bits
+
+    // 5. Divide em 12 x 11 bits
+    let frase = [];
+    for (let i = 0; i < 12; i++) {
+      const chunk = bits.slice(i * 11, (i + 1) * 11);
+      const index = parseInt(chunk, 2);
+      frase.push(lista[index]);
+    }
+
+    let html = frase.map((p, i) => {
+      if (i === 11) return `<span class="palavra palavra12">${i+1}. ${p} ← 12ª CHECKSUM</span>`;
+      return `<span class="palavra">${i+1}. ${p}</span>`;
+    }).join('');
+
+    document.getElementById('resultado').innerHTML = html;
+    document.getElementById('detalhes').innerText =
+      "Entropia (128 bits): " + Array.from(entropy).map(b=>b.toString(16).padStart(2,'0')).join('') +
+      "\nSHA256: " + Array.from(hash).map(b=>b.toString(16).padStart(2,'0')).join('') +
+      "\nChecksum (4 bits): " + checksum +
+      "\nIsso é BIP39 real, igual Trust Wallet, MetaMask, Ledger fazem.";
+
+    btn.innerText = "GERAR OUTRA FRASE REAL";
+  } catch(e) {
+    btn.innerText = "GERAR NOVA FRASE REAL";
+    document.getElementById('resultado').innerHTML = "Erro ao carregar lista. Verifique sua internet e tente de novo. " + e;
+  }
+}
+</script>
+</body>
+</html>
